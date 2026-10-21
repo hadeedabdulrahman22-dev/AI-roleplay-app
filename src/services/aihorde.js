@@ -5,6 +5,25 @@
 
 const DEFAULT_HORDE_KEY = '0000000000';
 const HORDE_API_BASE = 'https://aihorde.net/api/v2';
+const CLIENT_AGENT = 'PlottaCharacterAI:1.0:web-client';
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Tells AI Horde to stop a job we no longer need (cancelled, timed out, or failed).
+ * Best-effort: errors are ignored because this is only cleanup.
+ */
+export const cancelHordeGeneration = async (generationId) => {
+  if (!generationId) return;
+  try {
+    await fetch(`${HORDE_API_BASE}/generate/status/${generationId}`, {
+      method: 'DELETE',
+      headers: { 'Client-Agent': CLIENT_AGENT },
+    });
+  } catch (_) {
+    // ignore - cleanup only
+  }
+};
 
 /**
  * Builds the AI Horde prompt prioritizing the dynamic scene action first
@@ -41,6 +60,7 @@ export const initiateHordeGeneration = async ({
   userPersonaTags,
   sceneDescription,
   allowNsfw = true,
+  signal,
 }) => {
   const hordeKey = apiKey && apiKey.trim() !== '' ? apiKey.trim() : DEFAULT_HORDE_KEY;
   const charTags = characterVisualTags || visualTags || '';
@@ -65,21 +85,36 @@ export const initiateHordeGeneration = async ({
     // No specific model restrictions so any available fast worker picks up immediately
   };
 
-  const response = await fetch(`${HORDE_API_BASE}/generate/async`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': hordeKey,
-      'Client-Agent': 'PlottaCharacterAI:1.0:web-client',
-    },
-    body: JSON.stringify(payload),
-  });
+  // Retry when AI Horde says "too many requests" (common with the anonymous key
+  // when 3 panels are submitted together). Waits a bit longer each time.
+  const maxTries = 5;
+  let response;
+  for (let attempt = 1; attempt <= maxTries; attempt++) {
+    if (signal?.aborted) throw new Error('Image generation was cancelled');
+
+    response = await fetch(`${HORDE_API_BASE}/generate/async`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': hordeKey,
+        'Client-Agent': CLIENT_AGENT,
+      },
+      body: JSON.stringify(payload),
+      signal,
+    });
+
+    if (response.status !== 429 || attempt === maxTries) break;
+    await sleep(attempt * 4000);
+  }
 
   if (!response.ok) {
     let errorDetail = `AI Horde submission failed (${response.status})`;
+    if (response.status === 429) {
+      errorDetail = 'AI Horde is busy (too many requests). Register a free key in Settings or try again in a minute.';
+    }
     try {
       const errData = await response.json();
-      if (errData?.message) {
+      if (errData?.message && response.status !== 429) {
         errorDetail = errData.message;
       }
     } catch (_) {}
@@ -95,38 +130,45 @@ export const initiateHordeGeneration = async ({
 };
 
 /**
- * Polls the generation status every 3 seconds until completed or failed
+ * Polls the generation status every few seconds until completed or failed.
+ * If the user cancels, or it fails/times out, the job is also cancelled on AI Horde.
  * @param {string} generationId
  * @param {function} onProgress - callback receiving { queuePosition, waitTime, isProcessing }
  * @param {AbortSignal} signal - optional abort signal
  */
 export const pollHordeStatus = async (generationId, onProgress, signal) => {
-  const pollInterval = 3000;
-  const maxAttempts = 80; // ~4 minutes maximum
+  const pollInterval = 4000;
+  const maxAttempts = 90; // ~6 minutes maximum
   let attempts = 0;
+
+  // Errors that should stop polling immediately (not be retried)
+  const fatal = (message) => {
+    const err = new Error(message);
+    err.fatal = true;
+    return err;
+  };
 
   while (attempts < maxAttempts) {
     if (signal?.aborted) {
+      await cancelHordeGeneration(generationId);
       throw new Error('Image generation was cancelled');
     }
 
     try {
       const res = await fetch(`${HORDE_API_BASE}/generate/status/${generationId}`, {
-        headers: {
-          'Client-Agent': 'PlottaCharacterAI:1.0:web-client',
-        },
+        headers: { 'Client-Agent': CLIENT_AGENT },
         signal,
       });
 
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error('Generation job expired or not found on AI Horde');
-        }
-      } else {
+      if (res.status === 404) {
+        throw fatal('Generation job expired or not found on AI Horde');
+      }
+
+      if (res.ok) {
         const statusData = await res.json();
 
         if (statusData.faulted) {
-          throw new Error('AI Horde worker encountered an error generating this image');
+          throw fatal('AI Horde worker encountered an error generating this image');
         }
 
         if (statusData.done && statusData.generations && statusData.generations.length > 0) {
@@ -157,14 +199,19 @@ export const pollHordeStatus = async (generationId, onProgress, signal) => {
       }
     } catch (err) {
       if (signal?.aborted) {
-        throw new Error('Generation cancelled');
+        await cancelHordeGeneration(generationId);
+        throw new Error('Image generation was cancelled');
+      }
+      if (err.fatal) {
+        throw err;
       }
       console.warn('AI Horde polling glitch (will retry):', err);
     }
 
     attempts++;
-    await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    await sleep(pollInterval);
   }
 
+  await cancelHordeGeneration(generationId);
   throw new Error('AI Horde request timed out after waiting in queue. Please try regenerating.');
 };

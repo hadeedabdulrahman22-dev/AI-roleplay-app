@@ -27,7 +27,7 @@ Features interactive 3-panel sequential comic strip roleplay where generated ima
 - **Settings (Stored in `localStorage`)**:
   - OpenRouter API Key configuration.
   - Model selector dropdown featuring `openrouter/free`, `google/gemma-4-31b-it:free`, `qwen/qwen3.8-27b:free`, `nvidia/nemotron-3-super-120b-a12b:free`, and custom model IDs.
-  - AI Horde API Key input (defaults to `0000000000` public tier).
+  - AI Horde API Key input (defaults to `0000000000` anonymous tier, which has the lowest priority; a free key from https://aihorde.net/register is much faster).
   - Auto-Generate Comic Panels toggle.
 
 ---
@@ -43,8 +43,8 @@ Features interactive 3-panel sequential comic strip roleplay where generated ima
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
-cd "my character app"
+git clone https://github.com/hadeedabdulrahman22-dev/AI-roleplay-app.git
+cd AI-roleplay-app
 
 # Install dependencies
 npm install

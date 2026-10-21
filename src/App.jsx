@@ -244,6 +244,7 @@ export default function App() {
         userPersonaTags: settings.userPersonaTags,
         sceneDescription: scenePrompt,
         allowNsfw: settings.allowNsfw !== false,
+        signal: controller.signal,
       });
 
       // 2. Poll every 3 seconds for progress
@@ -312,9 +313,11 @@ export default function App() {
   const triggerAllPanels = async (messageId, panelsList, character) => {
     if (!Array.isArray(panelsList) || panelsList.length === 0) return;
 
+    // Start panels 1.5s apart so AI Horde doesn't reject them as a burst of requests
     await Promise.all(
-      panelsList.map((panel) => {
-        if (!panel.scenePrompt) return Promise.resolve();
+      panelsList.map(async (panel, index) => {
+        if (!panel.scenePrompt) return;
+        if (index > 0) await new Promise((resolve) => setTimeout(resolve, index * 1500));
         return triggerSinglePanelGeneration(messageId, panel.id, panel.scenePrompt, character);
       })
     );

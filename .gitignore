@@ -27,6 +27,7 @@ dist-ssr
 .env
 .env.*
 !.env.example
-*.txt
 *.key
-
+image gen.txt
+my chr.txt
+*.patch
