@@ -11,10 +11,32 @@ export const DEFAULT_SETTINGS = {
   customModelId: '',
   aiHordeApiKey: '0000000000',
   hordeModel: '',
+  storyLength: 'novel',
   autoGenerateComic: true,
   userPersonaTags: '1boy, handsome young man, dark hair, sharp jawline, stylish casual clothes',
   allowNsfw: true,
 };
+
+export const STORY_LENGTH_OPTIONS = [
+  {
+    id: 'novel',
+    name: 'Novel Mode (Long, Deeply Descriptive)',
+    badge: 'Novel',
+    description: 'Rich, novel-like prose with 1–2 descriptive paragraphs (80–150 words) per beat and natural multi-sentence dialogue.',
+  },
+  {
+    id: 'detailed',
+    name: 'Detailed Webtoon (Rich Paragraphs)',
+    badge: 'Detailed',
+    description: 'Vivid episodic webtoon narrative with expressive emotional reactions and full dialogue.',
+  },
+  {
+    id: 'concise',
+    name: 'Standard Comic (Concise)',
+    badge: 'Concise',
+    description: 'Brisk, punchy comic strip captions focused on rapid action and quick dialogue.',
+  },
+];
 
 export const DEFAULT_HORDE_MODELS = [
   { id: '', name: 'Any Available Fast Worker (Fastest)', badge: 'Fastest' },
@@ -69,6 +91,10 @@ export const getStoredSettings = () => {
     const validModelIds = MODEL_OPTIONS.map((m) => m.id);
     if (settings.model !== 'custom' && !validModelIds.includes(settings.model)) {
       settings.model = 'openrouter/free';
+    }
+
+    if (!settings.storyLength) {
+      settings.storyLength = 'novel';
     }
 
     return settings;

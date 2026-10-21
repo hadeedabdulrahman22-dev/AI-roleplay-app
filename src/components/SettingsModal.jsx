@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Key, Cpu, Image, Sparkles, Check, ExternalLink, Eye, EyeOff, ShieldCheck, User, Flame } from 'lucide-react';
-import { MODEL_OPTIONS, DEFAULT_HORDE_MODELS } from '../services/storage';
+import { X, Key, Cpu, Image, Sparkles, Check, ExternalLink, Eye, EyeOff, ShieldCheck, User, Flame, BookOpen } from 'lucide-react';
+import { MODEL_OPTIONS, DEFAULT_HORDE_MODELS, STORY_LENGTH_OPTIONS } from '../services/storage';
 
 export default function SettingsModal({
   isOpen,
@@ -267,6 +267,35 @@ export default function SettingsModal({
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Story Length / Detail Level Selector */}
+          <div className="space-y-1.5 p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-500/30">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                Response Length / Story Detail
+              </label>
+              <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+                {STORY_LENGTH_OPTIONS.find((o) => o.id === (formData.storyLength || 'novel'))?.badge || 'Novel'}
+              </span>
+            </div>
+
+            <select
+              value={formData.storyLength || 'novel'}
+              onChange={(e) => setFormData({ ...formData, storyLength: e.target.value })}
+              className="w-full bg-[#0b0e17] text-sm text-slate-100 px-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/60 transition-colors cursor-pointer"
+            >
+              {STORY_LENGTH_OPTIONS.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.name}
+                </option>
+              ))}
+            </select>
+
+            <p className="text-[11px] text-slate-400 pt-0.5">
+              {STORY_LENGTH_OPTIONS.find((o) => o.id === (formData.storyLength || 'novel'))?.description}
+            </p>
           </div>
 
           {/* AI Horde API Key */}

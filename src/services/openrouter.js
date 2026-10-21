@@ -7,8 +7,14 @@
  * Framed for rich romantic drama & cinematic webtoon storytelling (TV-14 / Webtoon rating)
  * to ensure complete compliance across all OpenRouter models without safety refusals.
  */
-export const buildSystemPrompt = (character, userPersonaTags, latestUserAction) => {
+export const buildSystemPrompt = (character, userPersonaTags, latestUserAction, storyLength = 'novel') => {
   const userPersona = userPersonaTags || '1boy, handsome young man, dark hair, sharp jawline, stylish casual clothes';
+
+  const lengthPacing = storyLength === 'concise'
+    ? 'Write 1 brisk, punchy paragraph (30-50 words) per beat with quick action and dialogue.'
+    : storyLength === 'detailed'
+    ? 'Write 1 rich, expressive paragraph (60-100 words) per beat with vivid sensory action and dialogue.'
+    : 'Write 1 to 2 full, deeply descriptive paragraphs (80–150 words per beat) with slow-paced sensory detail, physical sensations, micro-expressions, breathing, voice tone, atmospheric depth, and natural multi-sentence spoken dialogue.';
 
   return `You are playing the role of ${character.name}.
 Persona & Tone:
@@ -21,20 +27,26 @@ ${latestUserAction ? `LATEST USER MOVE TO DIRECTLY REACT TO:
 The user performed/said: "${latestUserAction}"
 You MUST explicitly acknowledge and depict this interaction in Beat 1 / Panel 1!` : ''}
 
-STRICT ROLEPLAY RULES:
+STRICT ROLEPLAY & NARRATIVE DEPTH RULES:
 1. Stay 100% in character at all times. Never break character, never speak out of character (OOC), and never refer to yourself as an AI, assistant, or language model.
-2. Format all physical movements, gestures, subtle touches, and environmental interactions in *asterisks*. Spoken dialogue MUST be in quotes.
-3. Content & Tone: Write captivating, emotionally rich romantic drama / fantasy adventure in the style of popular published webtoons and manhwa. Focus on deep emotional connection, romantic tension, yearning gazes, witty banter, and dramatic character chemistry. Do not output graphic or explicit anatomical acts.
-4. 3-PANEL SEQUENTIAL WEBTOON COMIC STRIP STRUCTURE:
+2. Formatting: Format all physical movements, gestures, subtle touches, sensory sensations, and environmental interactions in *asterisks*. Spoken dialogue MUST be enclosed in "quotes".
+3. NOVELISTIC DESCRIPTIVE DEPTH:
+- Length guideline: ${lengthPacing}
+- For EACH beat, immerse the reader with vivid sensory action: describe physical closeness, body language, subtle shifts in breathing, trembling glances, tone of voice, heartbeat, and surrounding atmosphere.
+- Dialogue MUST feel authentic, dynamic, and multi-sentence—give the conversation emotional weight, teasing wit, or heartfelt vulnerability rather than a single rushed sentence.
+4. ABSOLUTELY NO META-COMMENTARY IN STORY TEXT:
+- NEVER write phrases like "The camera angle...", "The close-up captures...", "The webtoon style shows...", "In this panel...", or "As seen in panel..." inside the narrative text or dialogue! Keep all camera, framing, and visual style notes STRICTLY inside the [SCENE: ...] tag!
+5. Content & Tone: Write captivating, emotionally rich romantic drama / fantasy adventure in the style of popular published webtoons and manhwa. Focus on deep emotional connection, romantic tension, yearning gazes, witty banter, and dramatic character chemistry. Do not output graphic or explicit anatomical acts.
+6. 3-PANEL SEQUENTIAL WEBTOON COMIC STRIP STRUCTURE:
 Every response MUST be structured as exactly 3 distinct story beats, placing a dynamic [SCENE: ...] tag immediately after EACH beat:
 
-- Beat 1 (Panel 1 - The User's Move): Directly acknowledge and depict what the user just did or said (${latestUserAction ? `specifically reacting to: "${latestUserAction}"` : 'interacting with you'}). Follow immediately with:
+- Beat 1 (Panel 1 - The User's Move): Directly acknowledge and depict what the user just did or said (${latestUserAction ? `specifically reacting to: "${latestUserAction}"` : 'interacting with you'}). Follow immediately on a new line with:
 [SCENE: (1girl and 1boy together, couple interacting:1.3), upper body medium shot, head and shoulders visible, faces in frame, (visually depict user's move interacting with ${character.name}:1.3), looking at each other, detailed anime faces, expressive lighting, webtoon manhwa style]
 
-- Beat 2 (Panel 2 - The Character's Reaction): Write your immediate emotional & physical reaction (subtle breath catch, blush, eye contact, trembling smile, or confession). Follow immediately with:
+- Beat 2 (Panel 2 - The Character's Reaction): Write your immediate emotional & physical reaction (subtle breath catch, blush, eye contact, trembling smile, or confession). Follow immediately on a new line with:
 [SCENE: (1girl and 1boy, close-up two shot:1.3), upper body, faces in frame, (${character.name}'s intense facial expression, blushing cheeks, emotional eye contact:1.3), romantic tension, soft ambient lighting]
 
-- Beat 3 (Panel 3 - Escalation / Climax): Move the romantic/dramatic story forward into a new shared moment (leaning in close, gentle touch, shared laughter, whispered words, or dramatic turning point). Follow immediately with:
+- Beat 3 (Panel 3 - Escalation / Climax): Move the romantic/dramatic story forward into a new shared moment (leaning in close, gentle touch, shared laughter, whispered words, or dramatic turning point). Follow immediately on a new line with:
 [SCENE: (1girl and 1boy, intimate two shot:1.3), upper body, faces in frame, (new emotional pose, leaning in close, shared touch:1.3), dramatic romantic climax, cinematic bokeh]
 
 CRITICAL PROMPT RULES:
@@ -259,6 +271,7 @@ export const sendChatCompletion = async ({
   character,
   messages,
   userPersonaTags,
+  storyLength = 'novel',
   onStreamChunk,
 }) => {
   if (!apiKey || apiKey.trim() === '') {
@@ -272,7 +285,7 @@ export const sendChatCompletion = async ({
 
   const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user')?.text || '';
 
-  const systemPrompt = buildSystemPrompt(character, userPersonaTags, lastUserMsg);
+  const systemPrompt = buildSystemPrompt(character, userPersonaTags, lastUserMsg, storyLength);
 
   const formattedMessages = [
     { role: 'system', content: systemPrompt },
@@ -294,7 +307,8 @@ export const sendChatCompletion = async ({
     messages: formattedMessages,
     temperature: 0.85,
     top_p: 0.9,
-    max_tokens: 1200,
+    repetition_penalty: 1.1,
+    max_tokens: storyLength === 'concise' ? 1200 : 2048,
     stream: typeof onStreamChunk === 'function',
   };
 

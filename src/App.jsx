@@ -367,6 +367,7 @@ export default function App() {
         character: activeCharacter,
         messages: [...messages, userMessage],
         userPersonaTags: settings.userPersonaTags,
+        storyLength: settings.storyLength || 'novel',
         onStreamChunk: (streamedFullText) => {
           const livePanels = parseStoryPanels(streamedFullText, activeCharacter, settings.userPersonaTags, text);
           const { cleanText } = extractSceneDescription(streamedFullText);
