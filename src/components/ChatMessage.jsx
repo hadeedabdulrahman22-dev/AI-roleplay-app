@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   RefreshCw, 
   Sparkles, 
@@ -10,7 +10,8 @@ import {
   Check, 
   Eye,
   Camera,
-  Layers
+  Layers,
+  Edit3
 } from 'lucide-react';
 
 /**
@@ -21,8 +22,11 @@ import {
 export const FormattedRoleplayText = ({ text }) => {
   if (!text) return null;
 
-  // Clean any remaining [SCENE: ...] tags from visible text
-  const cleanText = text.replace(/\[SCENE:\s*[\s\S]*?\]/gi, '').trim();
+  // Clean any remaining [SCENE: ...] tags or unclosed fragments from visible text
+  const cleanText = text
+    .replace(/\[SCENE:\s*[\s\S]*?\]/gi, '')
+    .replace(/\[SCENE:[\s\S]*$/gi, '')
+    .trim();
 
   // Split by asterisks: match both asterisks and whatever is in between
   const parts = cleanText.split(/(\*[^*]+\*)/g);
@@ -60,7 +64,7 @@ export const FormattedRoleplayText = ({ text }) => {
 };
 
 /**
- * Single Comic Panel component with loading animation, image view & regeneration
+ * Single Comic Panel component with loading animation, image view, editable prompt & regeneration
  */
 const ComicPanel = ({
   panel,
@@ -69,7 +73,17 @@ const ComicPanel = ({
   onRegeneratePanel,
   onOpenImageViewer,
 }) => {
-  const [showSceneCaption, setShowSceneCaption] = useState(false);
+  const [isEditingPrompt, setIsEditingPrompt] = useState(false);
+  const [editedPrompt, setEditedPrompt] = useState(panel.scenePrompt || '');
+
+  useEffect(() => {
+    setEditedPrompt(panel.scenePrompt || '');
+  }, [panel.scenePrompt]);
+
+  const handleSaveAndRegenerate = () => {
+    onRegeneratePanel(messageId, panel.id || panel.panelIndex, editedPrompt.trim());
+    setIsEditingPrompt(false);
+  };
 
   return (
     <div className="my-3 w-full">
@@ -154,11 +168,11 @@ const ComicPanel = ({
           {/* Panel Footer Controls */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
             <button
-              onClick={() => setShowSceneCaption(!showSceneCaption)}
-              className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-white/5 transition-colors"
+              onClick={() => setIsEditingPrompt(!isEditingPrompt)}
+              className="text-[11px] text-slate-400 hover:text-purple-300 flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/5 border border-transparent hover:border-purple-500/30 transition-colors"
             >
-              <Eye className="w-3 h-3 text-purple-400" />
-              <span>{showSceneCaption ? 'Hide Scene Prompt' : 'Scene Prompt'}</span>
+              <Edit3 className="w-3 h-3 text-purple-400" />
+              <span>{isEditingPrompt ? 'Close Editor' : 'Scene Prompt'}</span>
             </button>
 
             <button
@@ -169,19 +183,6 @@ const ComicPanel = ({
               <span>Regenerate Panel</span>
             </button>
           </div>
-
-          {showSceneCaption && (
-            <div className="p-2.5 rounded-xl bg-[#0c0f18] border border-white/5 text-[11px] space-y-1">
-              <p className="text-slate-400">
-                <strong className="text-purple-300">Prompt:</strong> {panel.scenePrompt}
-              </p>
-              {panel.imageModel && (
-                <p className="text-slate-500 text-[10px]">
-                  <strong className="text-slate-400">Worker Model:</strong> {panel.imageModel}
-                </p>
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -192,19 +193,35 @@ const ComicPanel = ({
             <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
             <span className="truncate">{panel.imageError}</span>
           </div>
-          <button
-            onClick={() => onRegeneratePanel(messageId, panel.id || panel.panelIndex)}
-            className="shrink-0 text-xs px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/30 rounded-lg flex items-center gap-1 transition-colors"
-          >
-            <RefreshCw className="w-3 h-3" />
-            <span>Retry</span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => setIsEditingPrompt(!isEditingPrompt)}
+              className="text-xs px-2.5 py-1 text-slate-400 hover:text-purple-300 border border-white/10 hover:border-purple-500/30 rounded-lg flex items-center gap-1 transition-colors"
+            >
+              <Edit3 className="w-3 h-3 text-purple-400" />
+              <span>Scene Prompt</span>
+            </button>
+            <button
+              onClick={() => onRegeneratePanel(messageId, panel.id || panel.panelIndex)}
+              className="text-xs px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/30 rounded-lg flex items-center gap-1 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Retry</span>
+            </button>
+          </div>
         </div>
       )}
 
       {/* State 4: Not yet generated */}
       {!panel.imageUrl && !panel.isGeneratingImage && !panel.imageError && panel.scenePrompt && (
-        <div className="flex items-center justify-end pt-1">
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            onClick={() => setIsEditingPrompt(!isEditingPrompt)}
+            className="text-[11px] font-medium text-slate-400 hover:text-purple-300 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-purple-500/10 border border-white/5 hover:border-purple-500/30 transition-all"
+          >
+            <Edit3 className="w-3 h-3 text-purple-400" />
+            <span>Scene Prompt</span>
+          </button>
           <button
             onClick={() => onRegeneratePanel(messageId, panel.id || panel.panelIndex)}
             className="text-[11px] font-medium text-slate-400 hover:text-purple-300 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-purple-500/10 border border-white/5 hover:border-purple-500/30 transition-all"
@@ -212,6 +229,52 @@ const ComicPanel = ({
             <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
             <span>Render Panel #{panel.panelIndex}</span>
           </button>
+        </div>
+      )}
+
+      {/* Editable Scene Prompt Drawer with Save & Regenerate Panel */}
+      {isEditingPrompt && (
+        <div className="p-3 rounded-xl bg-[#0c0f18] border border-purple-500/40 text-xs space-y-2 mt-2 shadow-xl animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-purple-300 flex items-center gap-1.5">
+              <Edit3 className="w-3.5 h-3.5 text-purple-400" />
+              Edit Scene Prompt (Stable Diffusion Tags)
+            </span>
+            {panel.imageModel && (
+              <span className="text-[10px] text-slate-500 font-mono">
+                Model: {panel.imageModel}
+              </span>
+            )}
+          </div>
+
+          <textarea
+            rows={3}
+            value={editedPrompt}
+            onChange={(e) => setEditedPrompt(e.target.value)}
+            placeholder="Enter custom visual scene prompt tags..."
+            className="w-full bg-[#07090f] text-xs text-purple-100 placeholder-slate-600 p-2.5 rounded-lg border border-purple-500/30 focus:outline-none focus:border-purple-400 font-mono leading-relaxed"
+          />
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setEditedPrompt(panel.scenePrompt || '');
+                setIsEditingPrompt(false);
+              }}
+              className="px-2.5 py-1.5 text-xs text-slate-400 hover:text-white rounded-md hover:bg-white/5 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAndRegenerate}
+              className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 transition-all hover:scale-[1.01]"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Save &amp; Regenerate Panel</span>
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -228,7 +291,10 @@ export default function ChatMessage({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    const textToCopy = message.text.replace(/\[SCENE:\s*[\s\S]*?\]/gi, '').trim();
+    const textToCopy = message.text
+      .replace(/\[SCENE:\s*[\s\S]*?\]/gi, '')
+      .replace(/\[SCENE:[\s\S]*$/gi, '')
+      .trim();
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

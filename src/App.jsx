@@ -17,7 +17,7 @@ import {
   clearStoredMessages 
 } from './services/storage';
 import { DEFAULT_CHARACTERS } from './data/defaultCharacters';
-import { sendChatCompletion, parseStoryPanels, extractSceneDescription } from './services/openrouter';
+import { sendChatCompletion, parseStoryPanels, extractSceneDescription, buildDynamicFallbackPrompt } from './services/openrouter';
 import { initiateHordeGeneration, pollHordeStatus } from './services/aihorde';
 
 export default function App() {
@@ -244,6 +244,7 @@ export default function App() {
         userPersonaTags: settings.userPersonaTags,
         sceneDescription: scenePrompt,
         allowNsfw: settings.allowNsfw !== false,
+        model: settings.hordeModel,
         signal: controller.signal,
       });
 
@@ -308,19 +309,20 @@ export default function App() {
   };
 
   /**
-   * Triggers all 3 panels in parallel using Promise.all
+   * Triggers all 3 panels sequentially staggered by 700ms to stay strictly within AI Horde's 2 req/sec limit
    */
   const triggerAllPanels = async (messageId, panelsList, character) => {
     if (!Array.isArray(panelsList) || panelsList.length === 0) return;
 
-    // Start panels 1.5s apart so AI Horde doesn't reject them as a burst of requests
-    await Promise.all(
-      panelsList.map(async (panel, index) => {
-        if (!panel.scenePrompt) return;
-        if (index > 0) await new Promise((resolve) => setTimeout(resolve, index * 1500));
-        return triggerSinglePanelGeneration(messageId, panel.id, panel.scenePrompt, character);
-      })
-    );
+    for (let i = 0; i < panelsList.length; i++) {
+      const panel = panelsList[i];
+      if (panel.scenePrompt) {
+        triggerSinglePanelGeneration(messageId, panel.id, panel.scenePrompt, character);
+        if (i < panelsList.length - 1) {
+          await new Promise((r) => setTimeout(r, 700));
+        }
+      }
+    }
   };
 
   // Send User Message & Receive AI 3-Panel Story Response
@@ -453,8 +455,8 @@ export default function App() {
     handleSendMessage(continuationText);
   };
 
-  // Regenerate Single Panel Handler
-  const handleRegeneratePanel = (messageId, panelId) => {
+  // Regenerate Single Panel Handler (supports user-edited scene prompt)
+  const handleRegeneratePanel = (messageId, panelId, customPrompt) => {
     const targetMsg = messages.find((m) => m.id === messageId);
     if (!targetMsg) return;
 
@@ -463,9 +465,26 @@ export default function App() {
     );
     if (!targetPanel) return;
 
-    let scenePrompt = targetPanel.scenePrompt;
+    let scenePrompt = customPrompt || targetPanel.scenePrompt;
     if (!scenePrompt) {
-      scenePrompt = `(1girl and 1boy together, couple interacting:1.3), upper body, faces in frame, ${activeCharacter.name} reacting to user, dramatic webtoon scene`;
+      const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user')?.text || '';
+      scenePrompt = buildDynamicFallbackPrompt(targetPanel.text, lastUserMsg, activeCharacter, targetPanel.panelIndex);
+    }
+
+    if (customPrompt) {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId) return m;
+          return {
+            ...m,
+            panels: (m.panels || []).map((p) =>
+              (p.id === panelId || p.panelIndex === panelId)
+                ? { ...p, scenePrompt: customPrompt }
+                : p
+            ),
+          };
+        })
+      );
     }
 
     triggerSinglePanelGeneration(messageId, targetPanel.id || panelId, scenePrompt, activeCharacter);

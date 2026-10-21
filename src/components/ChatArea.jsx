@@ -32,15 +32,41 @@ export default function ChatArea({
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const prevMessagesLengthRef = useRef(messages.length);
+  const prevCharIdRef = useRef(character?.id);
 
-  // Auto-scroll to bottom on new messages or generation progress
   const scrollToBottom = (behavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
+  // Controlled scroll behavior: ONLY scroll on new messages or near-bottom streaming text
   useEffect(() => {
-    scrollToBottom('smooth');
-  }, [messages, isLoadingResponse]);
+    const el = scrollContainerRef.current;
+    const isNewMessage = messages.length > prevMessagesLengthRef.current;
+    const isCharChanged = character?.id !== prevCharIdRef.current;
+
+    // Condition A: Brand-new message added or character switched
+    if (isNewMessage || isCharChanged) {
+      scrollToBottom('smooth');
+      prevMessagesLengthRef.current = messages.length;
+      prevCharIdRef.current = character?.id;
+      return;
+    }
+
+    prevMessagesLengthRef.current = messages.length;
+    prevCharIdRef.current = character?.id;
+
+    // Condition B: Text is actively streaming AND user is already near bottom (<= 120px)
+    const isStreaming = isLoadingResponse || messages.some((m) => m.isStreaming);
+    if (isStreaming && el) {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (distanceFromBottom <= 120) {
+        scrollToBottom('smooth');
+      }
+    }
+
+    // NEVER auto-scroll on AI Horde queue polling updates or image completion events if scrolled up
+  }, [messages, isLoadingResponse, character?.id]);
 
   const handleScroll = () => {
     const el = scrollContainerRef.current;

@@ -51,7 +51,6 @@ export const buildPrompt = (characterVisualTags, userPersonaTags, sceneDescripti
  * - width: 512, height: 640 (vertical webtoon format)
  * - steps: 20, cfg_scale: 7
  * - nsfw: true, censor_nsfw: false (100% uncensored)
- * - No heavy model restrictions: any available fast worker picks up immediately
  */
 export const initiateHordeGeneration = async ({
   apiKey,
@@ -60,6 +59,7 @@ export const initiateHordeGeneration = async ({
   userPersonaTags,
   sceneDescription,
   allowNsfw = true,
+  model = '',
   signal,
 }) => {
   const hordeKey = apiKey && apiKey.trim() !== '' ? apiKey.trim() : DEFAULT_HORDE_KEY;
@@ -82,39 +82,69 @@ export const initiateHordeGeneration = async ({
     censor_nsfw: !allowNsfw,
     r2: true, // Request direct R2 image CDN URL if available
     shared: false,
-    // No specific model restrictions so any available fast worker picks up immediately
   };
 
-  // Retry when AI Horde says "too many requests" (common with the anonymous key
-  // when 3 panels are submitted together). Waits a bit longer each time.
+  // If a specific model checkpoint is chosen, restrict to workers hosting that model
+  if (model && model.trim() !== '' && model.trim().toLowerCase() !== 'any') {
+    payload.models = [model.trim()];
+  }
+
+  // AI Horde rate limit: 2 requests per 1 second.
+  // Retry loop with backoff if 429 or "2 per 1 second" occurs
   const maxTries = 5;
   let response;
   for (let attempt = 1; attempt <= maxTries; attempt++) {
     if (signal?.aborted) throw new Error('Image generation was cancelled');
 
-    response = await fetch(`${HORDE_API_BASE}/generate/async`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': hordeKey,
-        'Client-Agent': CLIENT_AGENT,
-      },
-      body: JSON.stringify(payload),
-      signal,
-    });
+    try {
+      response = await fetch(`${HORDE_API_BASE}/generate/async`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': hordeKey,
+          'Client-Agent': CLIENT_AGENT,
+        },
+        body: JSON.stringify(payload),
+        signal,
+      });
+    } catch (err) {
+      if (signal?.aborted) throw new Error('Image generation was cancelled');
+      if (attempt === maxTries) throw err;
+      await sleep(attempt * 1000);
+      continue;
+    }
 
-    if (response.status !== 429 || attempt === maxTries) break;
-    await sleep(attempt * 4000);
+    if (response.status === 429) {
+      if (attempt < maxTries) {
+        await sleep(attempt * 1500);
+        continue;
+      }
+    }
+
+    // Check for rate limit in body if status is not 200
+    if (!response.ok) {
+      try {
+        const cloned = response.clone();
+        const errJson = await cloned.json();
+        const msg = (errJson?.message || '').toLowerCase();
+        if ((msg.includes('2 per 1 second') || msg.includes('rate limit') || msg.includes('too many requests')) && attempt < maxTries) {
+          await sleep(attempt * 1500);
+          continue;
+        }
+      } catch (_) {}
+    }
+
+    break;
   }
 
   if (!response.ok) {
     let errorDetail = `AI Horde submission failed (${response.status})`;
     if (response.status === 429) {
-      errorDetail = 'AI Horde is busy (too many requests). Register a free key in Settings or try again in a minute.';
+      errorDetail = 'AI Horde rate limit reached (2 req/sec). Retrying momentarily...';
     }
     try {
       const errData = await response.json();
-      if (errData?.message && response.status !== 429) {
+      if (errData?.message) {
         errorDetail = errData.message;
       }
     } catch (_) {}

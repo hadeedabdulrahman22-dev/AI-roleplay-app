@@ -10,10 +10,20 @@ export const DEFAULT_SETTINGS = {
   model: 'openrouter/free',
   customModelId: '',
   aiHordeApiKey: '0000000000',
+  hordeModel: '',
   autoGenerateComic: true,
   userPersonaTags: '1boy, handsome young man, dark hair, sharp jawline, stylish casual clothes',
   allowNsfw: true,
 };
+
+export const DEFAULT_HORDE_MODELS = [
+  { id: '', name: 'Any Available Fast Worker (Fastest)', badge: 'Fastest' },
+  { id: 'MeinaMix', name: 'MeinaMix (Anime / Manhwa Webtoon)', badge: 'Webtoon' },
+  { id: 'Anything Diffusion', name: 'Anything Diffusion (Classic Anime)', badge: 'Anime' },
+  { id: 'Dreamshaper', name: 'Dreamshaper (Cinematic Semi-Realistic)', badge: 'Cinematic' },
+  { id: 'Counterfeit-V3.0', name: 'Counterfeit-V3.0 (Detailed Illustration)', badge: 'Detailed' },
+  { id: 'custom', name: 'Custom Checkpoint Model...', badge: 'Custom' },
+];
 
 export const MODEL_OPTIONS = [
   {

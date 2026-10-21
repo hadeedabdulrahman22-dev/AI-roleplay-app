@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Key, Cpu, Image, Sparkles, Check, ExternalLink, Eye, EyeOff, ShieldCheck, User, Flame } from 'lucide-react';
-import { MODEL_OPTIONS } from '../services/storage';
+import { MODEL_OPTIONS, DEFAULT_HORDE_MODELS } from '../services/storage';
 
 export default function SettingsModal({
   isOpen,
@@ -13,10 +13,74 @@ export default function SettingsModal({
   const [showOpenRouterKey, setShowOpenRouterKey] = useState(false);
   const [showHordeKey, setShowHordeKey] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [hordeModels, setHordeModels] = useState(DEFAULT_HORDE_MODELS);
+  const [isLoadingHordeModels, setIsLoadingHordeModels] = useState(false);
+  const [isCustomHordeModel, setIsCustomHordeModel] = useState(false);
 
   useEffect(() => {
     setFormData(settings);
+    if (settings.hordeModel && !DEFAULT_HORDE_MODELS.some(m => m.id === settings.hordeModel)) {
+      setIsCustomHordeModel(true);
+    } else {
+      setIsCustomHordeModel(false);
+    }
   }, [settings, isOpen]);
+
+  // Fetch active AI Horde models when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    let isCancelled = false;
+
+    const fetchActiveModels = async () => {
+      setIsLoadingHordeModels(true);
+      try {
+        const res = await fetch('https://aihorde.net/api/v2/status/models?type=image');
+        if (res.ok && !isCancelled) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            // Sort by active workers count descending
+            const active = data
+              .filter((m) => m && m.count > 0 && m.name)
+              .sort((a, b) => b.count - a.count);
+
+            const mappedActive = active.slice(0, 35).map((m) => ({
+              id: m.name,
+              name: `${m.name} (${m.count} worker${m.count > 1 ? 's' : ''}${m.queued > 0 ? `, ${m.queued} queued` : ''})`,
+              badge: `${m.count}W`,
+            }));
+
+            // Merge with popular defaults
+            const combined = [
+              { id: '', name: 'Any Available Fast Worker (Fastest)', badge: 'Fastest' },
+              ...mappedActive,
+              { id: 'custom', name: 'Custom Checkpoint Model...', badge: 'Custom' },
+            ];
+
+            // If current model is not in list and not empty/custom, preserve it
+            if (formData.hordeModel && !combined.some((m) => m.id === formData.hordeModel)) {
+              combined.splice(1, 0, {
+                id: formData.hordeModel,
+                name: `${formData.hordeModel} (Saved)`,
+                badge: 'Saved',
+              });
+            }
+
+            setHordeModels(combined);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch active AI Horde models; using defaults', err);
+      } finally {
+        if (!isCancelled) setIsLoadingHordeModels(false);
+      }
+    };
+
+    fetchActiveModels();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isOpen]);
 
   // Handle native <dialog> showModal and light-dismiss
   useEffect(() => {
@@ -239,6 +303,59 @@ export default function SettingsModal({
             </div>
             <p className="text-[11px] text-slate-400">
               Defaults to <code className="text-cyan-300 bg-white/5 px-1 py-0.5 rounded font-mono">0000000000</code> if left blank. Free public crowdsourced GPU generation!
+            </p>
+          </div>
+
+          {/* AI Horde Checkpoint Model Selector */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                <Image className="w-3.5 h-3.5 text-pink-400" />
+                AI Horde Image Model (Checkpoint)
+              </label>
+              {isLoadingHordeModels && (
+                <span className="text-[10px] text-pink-300 font-mono animate-pulse">
+                  Fetching active workers...
+                </span>
+              )}
+            </div>
+            <select
+              value={isCustomHordeModel ? 'custom' : (formData.hordeModel || '')}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'custom') {
+                  setIsCustomHordeModel(true);
+                } else {
+                  setIsCustomHordeModel(false);
+                  setFormData({ ...formData, hordeModel: val });
+                }
+              }}
+              className="w-full bg-[#0b0e17] text-sm text-slate-100 px-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-pink-500/60 focus:ring-1 focus:ring-pink-500/60 transition-colors cursor-pointer"
+            >
+              {hordeModels.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.name}
+                </option>
+              ))}
+            </select>
+
+            {isCustomHordeModel && (
+              <div className="pt-2">
+                <input
+                  type="text"
+                  placeholder="e.g. MeinaMix, Dreamshaper, Counterfeit-V3.0"
+                  value={formData.hordeModel === 'custom' ? '' : (formData.hordeModel || '')}
+                  onChange={(e) => setFormData({ ...formData, hordeModel: e.target.value })}
+                  className="w-full bg-[#0b0e17] text-sm text-slate-100 placeholder-slate-600 px-3 py-2 rounded-xl border border-pink-500/40 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-colors font-mono"
+                />
+                <p className="text-[11px] text-pink-300 mt-1">
+                  Enter the exact model checkpoint name hosted on AI Horde.
+                </p>
+              </div>
+            )}
+
+            <p className="text-[11px] text-slate-400">
+              Select a webtoon/manhwa/anime checkpoint (e.g. MeinaMix, Anything Diffusion) or keep Any Available Fast Worker.
             </p>
           </div>
 

@@ -44,6 +44,37 @@ CRITICAL PROMPT RULES:
 };
 
 /**
+ * Constructs a dynamic visual prompt directly from the actual text of a story beat + user's move.
+ * Completely dynamic: never relies on hardcoded generic boilerplate.
+ */
+export const buildDynamicFallbackPrompt = (beatText, latestUserAction, character, panelIndex = 1) => {
+  const cleanBeat = (beatText || '')
+    .replace(/\[SCENE:[\s\S]*$/gi, '')
+    .replace(/["*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const beatSnippet = cleanBeat.slice(0, 120).trim();
+
+  const userActionClean = (latestUserAction || '')
+    .replace(/["*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80)
+    .trim();
+
+  const charName = character?.name || 'character';
+
+  if (panelIndex === 1) {
+    const userPart = userActionClean ? `reacting to user action "${userActionClean}", ` : '';
+    return `(1girl and 1boy together, interactive medium shot:1.3), upper body, faces in frame, ${userPart}${charName} acknowledging user, ${beatSnippet || 'interacting closely'}, expressive eyes, webtoon manhwa style`;
+  } else if (panelIndex === 2) {
+    return `(1girl and 1boy, close-up two shot:1.3), upper body, faces in frame, ${charName}'s emotional reaction, ${beatSnippet || 'gazing with deep feeling'}, eye contact, romantic tension, expressive lighting`;
+  } else {
+    return `(1girl and 1boy, intimate two shot:1.3), upper body, faces in frame, dramatic climax moment, ${beatSnippet || 'leaning in close together'}, emotional proximity, cinematic webtoon romance`;
+  }
+};
+
+/**
  * Checks if a response from OpenRouter is an AI safety refusal
  */
 export const isSafetyRefusal = (text) => {
@@ -70,10 +101,7 @@ export const parseStoryPanels = (rawText, character, userPersona, latestUserActi
 [SCENE: (1girl and 1boy, intimate two shot:1.3), upper body, faces in frame, leaning in close, emotional eye contact, romantic tension, webtoon romance climax]`;
   }
 
-  const userActionClean = latestUserAction
-    ? latestUserAction.replace(/\*/g, '').slice(0, 80).trim()
-    : 'interacting with each other';
-
+  // Non-greedy multi-line regex matching up to closing ]
   const sceneRegex = /\[SCENE:\s*([\s\S]*?)\]/gi;
   const matches = [...cleanSource.matchAll(sceneRegex)];
 
@@ -87,12 +115,15 @@ export const parseStoryPanels = (rawText, character, userPersona, latestUserActi
       const matchStart = match.index;
       const matchEnd = match.index + match[0].length;
 
-      const beatText = cleanSource.slice(lastIndex, matchStart).trim();
-      const rawPrompt = match[1].trim();
+      let beatText = cleanSource.slice(lastIndex, matchStart).trim();
+      beatText = beatText.replace(/\[SCENE:[\s\S]*$/gi, '').trim();
 
-      const scenePrompt = rawPrompt.includes('1girl and 1boy')
-        ? rawPrompt
-        : `(1girl and 1boy together, couple interacting:1.3), upper body, faces in frame, ${rawPrompt}`;
+      const rawPrompt = match[1].trim();
+      const scenePrompt = rawPrompt
+        ? (rawPrompt.includes('1girl and 1boy')
+            ? rawPrompt
+            : `(1girl and 1boy together, couple interacting:1.3), upper body, faces in frame, ${rawPrompt}`)
+        : buildDynamicFallbackPrompt(beatText, latestUserAction, character, i + 1);
 
       panels.push({
         panelIndex: i + 1,
@@ -104,7 +135,7 @@ export const parseStoryPanels = (rawText, character, userPersona, latestUserActi
       lastIndex = matchEnd;
     }
 
-    const trailing = cleanSource.slice(lastIndex).replace(sceneRegex, '').trim();
+    let trailing = cleanSource.slice(lastIndex).replace(sceneRegex, '').replace(/\[SCENE:[\s\S]*$/gi, '').trim();
     if (trailing) {
       panels[2].text += `\n\n${trailing}`;
     }
@@ -113,7 +144,10 @@ export const parseStoryPanels = (rawText, character, userPersona, latestUserActi
   }
 
   // Case 2: Model produced fewer than 3 tags: cleanly divide into 3 beats
-  const clean = cleanSource.replace(/\[SCENE:\s*[\s\S]*?\]/gi, '').trim();
+  const clean = cleanSource
+    .replace(sceneRegex, '')
+    .replace(/\[SCENE:[\s\S]*$/gi, '')
+    .trim();
   const paragraphs = clean.split(/\n\s*\n/).filter(Boolean);
 
   let beatTexts = [];
@@ -160,17 +194,21 @@ export const parseStoryPanels = (rawText, character, userPersona, latestUserActi
     }
   }
 
-  const prompt1 = matches[0]
+  // Clean each beatText of any stray fragments
+  beatTexts = beatTexts.map((bt) => (bt || '').replace(/\[SCENE:[\s\S]*$/gi, '').trim());
+
+  // Construct dynamic prompt from the actual beat text + user action!
+  const prompt1 = matches[0] && matches[0][1].trim()
     ? matches[0][1].trim()
-    : `(1girl and 1boy together, couple interacting:1.3), upper body medium shot, head and shoulders visible, faces in frame, (${character?.name || 'character'} acknowledging user: ${userActionClean}:1.3), eye contact, romantic webtoon manhwa art`;
+    : buildDynamicFallbackPrompt(beatTexts[0], latestUserAction, character, 1);
 
-  const prompt2 = matches[1]
+  const prompt2 = matches[1] && matches[1][1].trim()
     ? matches[1][1].trim()
-    : `(1girl and 1boy, close-up two shot:1.3), upper body, faces in frame, (${character?.name || 'character'} blushing cheeks, emotional vulnerable gaze, eye contact:1.3), soft romantic lighting, dramatic tension`;
+    : buildDynamicFallbackPrompt(beatTexts[1], latestUserAction, character, 2);
 
-  const prompt3 = matches[2]
+  const prompt3 = matches[2] && matches[2][1].trim()
     ? matches[2][1].trim()
-    : `(1girl and 1boy, intimate two shot:1.3), upper body, faces in frame, (leaning in close, gentle touch, emotional closeness:1.3), atmospheric bokeh, webtoon romance climax`;
+    : buildDynamicFallbackPrompt(beatTexts[2], latestUserAction, character, 3);
 
   return [
     {
@@ -200,13 +238,18 @@ export const extractSceneDescription = (fullText) => {
   const sceneRegex = /\[SCENE:\s*([\s\S]*?)\]/gi;
   const matches = [...fullText.matchAll(sceneRegex)];
 
+  // Clean out closed [SCENE: ...] tags and strip any unclosed stray fragments
+  const cleanText = fullText
+    .replace(sceneRegex, '')
+    .replace(/\[SCENE:[\s\S]*$/gi, '')
+    .trim();
+
   if (matches.length > 0) {
-    const cleanText = fullText.replace(sceneRegex, '').trim();
     const lastScene = matches[matches.length - 1][1].trim();
     return { cleanText, sceneDescription: lastScene };
   }
 
-  return { cleanText: fullText.trim(), sceneDescription: null };
+  return { cleanText, sceneDescription: null };
 };
 
 export const sendChatCompletion = async ({
