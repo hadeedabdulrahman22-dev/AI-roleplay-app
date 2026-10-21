@@ -26,24 +26,56 @@ export const cancelHordeGeneration = async (generationId) => {
 };
 
 /**
- * Builds the AI Horde prompt prioritizing the dynamic scene action first
- * so Stable Diffusion directly illustrates the user's move and character's response
- * while ensuring heads and faces are fully in frame (no decapitation/crop).
+ * Strips restrictive outer clothing words whenever the scene calls for intimacy,
+ * bedroom settings, undressing, or close physical contact so the [SCENE: ...] tag
+ * has full visual control over what the characters are wearing and doing.
  */
-export const buildPrompt = (characterVisualTags, userPersonaTags, sceneDescription) => {
-  const qualityPrefix = 'masterpiece, best quality, korean webtoon style, manhwa romance art, dynamic composition, upper body, cowboy shot, head and shoulders visible, faces in frame, eye contact';
-  const scenePart = sceneDescription ? sceneDescription.trim() : 'romantic couple interacting, emotional eye contact, webtoon romance scene';
-  const charPart = characterVisualTags ? characterVisualTags.trim() : '';
-  const userPart = userPersonaTags ? userPersonaTags.trim() : '1boy, handsome young man, dark hair, stylish clothes';
+export const stripRestrictiveClothing = (tags, sceneDescription = '') => {
+  if (!tags) return '';
+  const sceneLower = (sceneDescription || '').toLowerCase();
 
-  // SCENE ACTION COMES FIRST right after style & framing so CLIP gives it highest weight
-  const positivePrompt = `${qualityPrefix}, ${scenePart}, ${charPart}, ${userPart}`;
+  // Check if scene involves bedroom, bed, lap, skin, touch, kiss, undressing, or close physical contact
+  const isIntimate = /undress|bed|lying|lap|straddl|skin|bare|shirtless|chest|cleavage|shoulder|naked|thigh|embrace|kiss|hug|intimat|touch|unbutton|sleepwear|morning|towel/i.test(sceneLower);
 
-  // Strict anti-cropping negative prompt to prevent headless or cropped characters
-  const negativePrompt = 'headless, cropped head, cut off head, out of frame head, missing head, decapitated, face out of frame, body out of frame, cut off at neck, zoomed in too close, bad anatomy, bad hands, stiff pose, boring portrait, passport photo, staring blankly at camera, deformed, extra limbs, text, watermark, censored';
+  if (!isIntimate) return tags;
+
+  // Restrictive clothing terms to remove so they don't override the scene
+  const clothingPattern = /\b(stylish casual clothes|casual clothes|formal clothes|business suit|suit and tie|suit|jacket|blazer|trenchcoat|coat|heavy coat|winter coat|formal dress|evening dress|cocktail dress|dress|leather jacket|uniform|armor|sweater|hoodie|boots|tie)\b/gi;
+
+  return tags
+    .replace(clothingPattern, '')
+    .replace(/,\s*,+/g, ',')
+    .replace(/^[\s,]+|[\s,]+$/g, '')
+    .trim();
+};
+
+/**
+ * Builds the AI Horde prompt prioritizing the dynamic scene action first:
+ * masterpiece, best quality, korean webtoon art, expressive anatomy, dynamic angle, ${scenePrompt}, ${characterCoreFeatures}, ${userCoreFeatures}
+ */
+export const buildFullPrompt = (characterVisualTags, userPersonaTags, sceneDescription) => {
+  const qualityPrefix = 'masterpiece, best quality, korean webtoon art, expressive anatomy, dynamic angle';
+  const scenePrompt = sceneDescription ? sceneDescription.trim() : '1girl and 1boy together, intimate couple interacting, expressive faces, webtoon romance';
+
+  // Strip restrictive clothing from character and user persona if the scene is intimate
+  const characterCoreFeatures = stripRestrictiveClothing(characterVisualTags || '', scenePrompt);
+  const userCoreFeatures = stripRestrictiveClothing(userPersonaTags || '', scenePrompt);
+
+  const parts = [
+    qualityPrefix,
+    scenePrompt,
+    characterCoreFeatures,
+    userCoreFeatures,
+  ].filter(Boolean);
+
+  const positivePrompt = parts.join(', ');
+
+  const negativePrompt = 'static standing portrait, formal clothes in bed, stiff posture, looking away, censored, headless, cropped head, cut off head, out of frame head, missing head, decapitated, face out of frame, body out of frame, cut off at neck, zoomed in too close, bad anatomy, bad hands, stiff pose, boring portrait, passport photo, staring blankly at camera, deformed, extra limbs, text, watermark';
 
   return `${positivePrompt} ### ${negativePrompt}`;
 };
+
+export const buildPrompt = buildFullPrompt;
 
 /**
  * Initiates an async image generation request on AI Horde

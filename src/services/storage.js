@@ -40,10 +40,12 @@ export const STORY_LENGTH_OPTIONS = [
 
 export const DEFAULT_HORDE_MODELS = [
   { id: '', name: 'Any Available Fast Worker (Fastest)', badge: 'Fastest' },
+  { id: 'AlbedoBase XL (SDXL)', name: 'AlbedoBase XL (SDXL - High Fidelity & Accuracy)', badge: 'Top SDXL' },
+  { id: 'WAI-NSFW-illustrious-SDXL', name: 'WAI-NSFW-illustrious-SDXL (Uncensored Webtoon / Anime)', badge: 'Top NSFW' },
   { id: 'MeinaMix', name: 'MeinaMix (Anime / Manhwa Webtoon)', badge: 'Webtoon' },
-  { id: 'Anything Diffusion', name: 'Anything Diffusion (Classic Anime)', badge: 'Anime' },
   { id: 'Dreamshaper', name: 'Dreamshaper (Cinematic Semi-Realistic)', badge: 'Cinematic' },
   { id: 'Counterfeit-V3.0', name: 'Counterfeit-V3.0 (Detailed Illustration)', badge: 'Detailed' },
+  { id: 'Anything Diffusion', name: 'Anything Diffusion (Classic Anime)', badge: 'Anime' },
   { id: 'custom', name: 'Custom Checkpoint Model...', badge: 'Custom' },
 ];
 

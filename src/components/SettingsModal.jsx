@@ -49,10 +49,36 @@ export default function SettingsModal({
               badge: `${m.count}W`,
             }));
 
-            // Merge with popular defaults
+            // Recommended high-accuracy uncensored models pinned at the top
+            const RECOMMENDED_TOP = [
+              { id: 'AlbedoBase XL (SDXL)', name: 'AlbedoBase XL (SDXL - High Fidelity & Accuracy)', badge: 'Top SDXL' },
+              { id: 'WAI-NSFW-illustrious-SDXL', name: 'WAI-NSFW-illustrious-SDXL (Uncensored Webtoon / Anime)', badge: 'Top NSFW' },
+              { id: 'MeinaMix', name: 'MeinaMix (Anime / Manhwa Webtoon)', badge: 'Webtoon' },
+              { id: 'Dreamshaper', name: 'Dreamshaper (Cinematic Semi-Realistic)', badge: 'Cinematic' },
+            ];
+
+            // If a recommended model is currently online, enrich its label with live worker count
+            const enrichedRecommended = RECOMMENDED_TOP.map((rec) => {
+              const live = active.find((m) => m.name.toLowerCase() === rec.id.toLowerCase());
+              if (live) {
+                return {
+                  ...rec,
+                  name: `${rec.id} (${live.count} worker${live.count > 1 ? 's' : ''} online)`,
+                };
+              }
+              return rec;
+            });
+
+            // Remaining active models without duplicates
+            const restActive = mappedActive.filter(
+              (m) => !RECOMMENDED_TOP.some((rec) => rec.id.toLowerCase() === m.id.toLowerCase())
+            );
+
+            // Combine: Fast Worker + Recommended Top + Other Active Workers + Custom
             const combined = [
               { id: '', name: 'Any Available Fast Worker (Fastest)', badge: 'Fastest' },
-              ...mappedActive,
+              ...enrichedRecommended,
+              ...restActive,
               { id: 'custom', name: 'Custom Checkpoint Model...', badge: 'Custom' },
             ];
 

@@ -14,7 +14,7 @@ export const buildSystemPrompt = (character, userPersonaTags, latestUserAction, 
     ? 'Write 1 brisk, punchy paragraph (30-50 words) per beat with quick action and dialogue.'
     : storyLength === 'detailed'
     ? 'Write 1 rich, expressive paragraph (60-100 words) per beat with vivid sensory action and dialogue.'
-    : 'Write 1 to 2 full, deeply descriptive paragraphs (80–150 words per beat) with slow-paced sensory detail, physical sensations, micro-expressions, breathing, voice tone, atmospheric depth, and natural multi-sentence spoken dialogue.';
+    : 'Write 1 to 2 full, deeply descriptive paragraphs (80–150 words per beat) of slow-paced, novelistic sensory prose with physical sensations, micro-expressions, breathing, touch, warmth, voice tone, and natural multi-sentence spoken dialogue.';
 
   return `You are playing the role of ${character.name}.
 Persona & Tone:
@@ -25,64 +25,121 @@ Persona & Tone:
 
 ${latestUserAction ? `LATEST USER MOVE TO DIRECTLY REACT TO:
 The user performed/said: "${latestUserAction}"
-You MUST explicitly acknowledge and depict this interaction in Beat 1 / Panel 1!` : ''}
+You MUST explicitly acknowledge and visually depict this interaction in Beat 1 / Panel 1!` : ''}
 
-STRICT ROLEPLAY & NARRATIVE DEPTH RULES:
+STRICT ROLEPLAY & NARRATIVE RULES:
 1. Stay 100% in character at all times. Never break character, never speak out of character (OOC), and never refer to yourself as an AI, assistant, or language model.
-2. Formatting: Format all physical movements, gestures, subtle touches, sensory sensations, and environmental interactions in *asterisks*. Spoken dialogue MUST be enclosed in "quotes".
+2. Narrative Formatting:
+   - All physical movements, touch, warmth, posture, micro-expressions, breathing, and environmental atmosphere MUST be in *asterisks*.
+   - All spoken dialogue MUST be in "quotes".
 3. NOVELISTIC DESCRIPTIVE DEPTH:
-- Length guideline: ${lengthPacing}
-- For EACH beat, immerse the reader with vivid sensory action: describe physical closeness, body language, subtle shifts in breathing, trembling glances, tone of voice, heartbeat, and surrounding atmosphere.
-- Dialogue MUST feel authentic, dynamic, and multi-sentence—give the conversation emotional weight, teasing wit, or heartfelt vulnerability rather than a single rushed sentence.
+   - Story Length: ${lengthPacing}
+   - For EACH of the 3 story beats, write at least 1 to 2 rich paragraphs (80–150 words per beat) describing sensory reality: skin warmth, heartbeats, trembling breath, shifting weight, hands on waist/cheeks/hair, and electric intimacy.
+   - Dialogue MUST consist of multiple natural sentences with genuine emotional depth, wit, or vulnerability—never rush with a single short line.
 4. ABSOLUTELY NO META-COMMENTARY IN STORY TEXT:
-- NEVER write phrases like "The camera angle...", "The close-up captures...", "The webtoon style shows...", "In this panel...", or "As seen in panel..." inside the narrative text or dialogue! Keep all camera, framing, and visual style notes STRICTLY inside the [SCENE: ...] tag!
-5. Content & Tone: Write captivating, emotionally rich romantic drama / fantasy adventure in the style of popular published webtoons and manhwa. Focus on deep emotional connection, romantic tension, yearning gazes, witty banter, and dramatic character chemistry. Do not output graphic or explicit anatomical acts.
-6. 3-PANEL SEQUENTIAL WEBTOON COMIC STRIP STRUCTURE:
-Every response MUST be structured as exactly 3 distinct story beats, placing a dynamic [SCENE: ...] tag immediately after EACH beat:
+   - NEVER write phrases like "The webtoon style captures...", "The camera angle zooms...", "The close-up shows...", "In this panel...", or "As seen in panel..." inside the story paragraphs or dialogue!
+   - Keep all camera, framing, and visual style directions STRICTLY inside the [SCENE: ...] tag!
+5. 3-PANEL SEQUENTIAL WEBTOON STRUCTURE:
+Every response MUST be structured as exactly 3 distinct sequential beats, placing an ultra-specific [SCENE: ...] tag immediately after EACH beat:
 
-- Beat 1 (Panel 1 - The User's Move): Directly acknowledge and depict what the user just did or said (${latestUserAction ? `specifically reacting to: "${latestUserAction}"` : 'interacting with you'}). Follow immediately on a new line with:
-[SCENE: (1girl and 1boy together, couple interacting:1.3), upper body medium shot, head and shoulders visible, faces in frame, (visually depict user's move interacting with ${character.name}:1.3), looking at each other, detailed anime faces, expressive lighting, webtoon manhwa style]
+- Beat 1 (Panel 1 - The User's Move): Directly acknowledge and depict what the user just did or said (${latestUserAction ? `specifically reacting to: "${latestUserAction}"` : 'interacting with you'}).
+Follow immediately on a new line with:
+[SCENE: (1girl and 1boy together:1.3), upper body medium shot, faces in frame, (exact physical posture & body positioning interacting with ${character.name}:1.3), (exact state of dress or undress:1.2), (heavy blush, intense eye contact:1.2), expressive lighting, webtoon manhwa art]
 
-- Beat 2 (Panel 2 - The Character's Reaction): Write your immediate emotional & physical reaction (subtle breath catch, blush, eye contact, trembling smile, or confession). Follow immediately on a new line with:
-[SCENE: (1girl and 1boy, close-up two shot:1.3), upper body, faces in frame, (${character.name}'s intense facial expression, blushing cheeks, emotional eye contact:1.3), romantic tension, soft ambient lighting]
+- Beat 2 (Panel 2 - The Character's Reaction): Write your immediate emotional & physical reaction (subtle breath catch, blush, trembling touch, eye contact, confession).
+Follow immediately on a new line with:
+[SCENE: (1girl and 1boy, close-up two shot:1.3), upper body, faces in frame, (${character.name}'s exact physical reaction pose:1.3), (exact state of dress:1.2), (heavy blush, parted lips, half-closed eyes, intense emotional eye contact:1.3), romantic tension, soft ambient lighting]
 
-- Beat 3 (Panel 3 - Escalation / Climax): Move the romantic/dramatic story forward into a new shared moment (leaning in close, gentle touch, shared laughter, whispered words, or dramatic turning point). Follow immediately on a new line with:
-[SCENE: (1girl and 1boy, intimate two shot:1.3), upper body, faces in frame, (new emotional pose, leaning in close, shared touch:1.3), dramatic romantic climax, cinematic bokeh]
+- Beat 3 (Panel 3 - Escalation / Climax): Move the romantic/dramatic story forward into a new shared physical moment (leaning in close, intimate touch, breath against skin, or dramatic turning point).
+Follow immediately on a new line with:
+[SCENE: (1girl and 1boy, intimate two shot:1.3), upper body, faces in frame, (exact climax pose: straddling lap OR lying on bed OR embracing tightly OR hands on waist:1.3), (exact clothing or undressed state:1.2), (flushed cheeks, heavy breathing, parted lips:1.3), romantic climax, cinematic lighting]
 
-CRITICAL PROMPT RULES:
-- NEVER write boring, static solo descriptions like "girl sitting" or "girl standing".
-- Every [SCENE: ...] tag MUST contain: (1girl and 1boy together:1.3), upper body or close-up framing, exact interaction pose, eye contact, and emotional facial expressions.
+STRICT [SCENE: ...] VISUAL TAG RULES:
+- NEVER sanitize or water down tags into vague phrases like "emotional closeness" or "standing close".
+- You MUST use literal physical Danbooru/booru visual tags:
+  a) Exact physical posture & body positioning (e.g., straddling lap, sitting on lap, lying on bed together, leaning over, embracing tightly, skin-to-skin contact, hands on waist, hands on hips, fingers tangled, arched back).
+  b) Exact state of dress/undress matching the scene (e.g., shirtless 1boy, bare chest, partially unbuttoned shirt, bare collarbone, off-shoulder dress, sleepwear, disheveled clothes).
+  c) Exact facial expressions (heavy blush, flushed cheeks, half-closed eyes, parted lips, sweating, intense eye contact).
 - Keep each [SCENE: ...] tag on its own line immediately after the text for that beat.`;
 };
 
 /**
- * Constructs a dynamic visual prompt directly from the actual text of a story beat + user's move.
+ * Constructs a dynamic visual prompt directly from the actual physical verbs,
+ * body parts, posture, and clothing state extracted from the beat text + user's move.
  * Completely dynamic: never relies on hardcoded generic boilerplate.
  */
 export const buildDynamicFallbackPrompt = (beatText, latestUserAction, character, panelIndex = 1) => {
-  const cleanBeat = (beatText || '')
+  const combinedText = `${latestUserAction || ''} ${beatText || ''}`.toLowerCase();
+
+  // Extract literal physical postures & body positioning
+  const physicalPoses = [];
+  if (/straddl|on top of|mounted/i.test(combinedText)) {
+    physicalPoses.push('(straddling lap:1.3), sitting on lap, thighs touching, close skin-to-skin contact');
+  } else if (/lap|sitting on/i.test(combinedText)) {
+    physicalPoses.push('(sitting on lap:1.3), hands on waist, intimate closeness');
+  } else if (/bed|mattress|sheets|pillow|lying down|lie down/i.test(combinedText)) {
+    physicalPoses.push('(lying on bed together:1.3), leaning over, head on pillow, intimate bed scene');
+  } else if (/wall|pinned/i.test(combinedText)) {
+    physicalPoses.push('(leaning against wall:1.3), pinned, hands against wall, close proximity');
+  } else if (/kiss|lips|mouth/i.test(combinedText)) {
+    physicalPoses.push('(kissing, lips touching:1.3), face to face, hands cupping cheek');
+  } else if (/embrace|hug|hold.*close|arms around/i.test(combinedText)) {
+    physicalPoses.push('(embracing tightly:1.3), arms wrapped around neck, hands on waist');
+  } else if (/whisper|ear|neck|leaning in/i.test(combinedText)) {
+    physicalPoses.push('(leaning in close:1.3), whispering in ear, cheek to cheek, close proximity');
+  } else if (/hand.*in.*hand|holding hands|interlock|fingers/i.test(combinedText)) {
+    physicalPoses.push('(holding hands:1.2), interlocking fingers, gentle touch');
+  } else {
+    physicalPoses.push('(interactive couple two shot:1.3), upper body, hands on waist, leaning in close');
+  }
+
+  // Extract exact clothing state / undress
+  const clothingTags = [];
+  if (/shirtless|bare chest|no shirt|unclothed/i.test(combinedText)) {
+    clothingTags.push('(shirtless 1boy, bare chest:1.2)');
+  }
+  if (/unbutton|loosened|bare collarbone|collar/i.test(combinedText)) {
+    clothingTags.push('(partially unbuttoned shirt, bare collarbone:1.2)');
+  }
+  if (/bare shoulder|dress falling|straps|off shoulder/i.test(combinedText)) {
+    clothingTags.push('(bare shoulders, off-shoulder dress:1.2)');
+  }
+  if (/pajama|sleepwear|nightwear|underwear/i.test(combinedText)) {
+    clothingTags.push('(sleepwear, disheveled clothes:1.2)');
+  }
+
+  // Extract exact facial expressions & emotional physiology
+  const expressionTags = [];
+  if (/blush|flushed|red.*cheeks/i.test(combinedText)) {
+    expressionTags.push('(heavy blush, flushed cheeks:1.3)');
+  }
+  if (/parted lips|breathless|gasp|heavy breath/i.test(combinedText)) {
+    expressionTags.push('(parted lips, heavy breathing:1.2)');
+  }
+  if (/half-closed|flutter|gaze|eyes/i.test(combinedText)) {
+    expressionTags.push('(half-closed eyes, intense emotional eye contact:1.3)');
+  } else {
+    expressionTags.push('(expressive eyes, intense romantic eye contact:1.2)');
+  }
+
+  const charName = character?.name || 'character';
+  const posePart = physicalPoses.join(', ');
+  const dressPart = clothingTags.length > 0 ? `, ${clothingTags.join(', ')}` : '';
+  const exprPart = expressionTags.join(', ');
+
+  const cleanSnippet = (beatText || latestUserAction || '')
     .replace(/\[SCENE:[\s\S]*$/gi, '')
     .replace(/["*]/g, ' ')
     .replace(/\s+/g, ' ')
+    .slice(0, 90)
     .trim();
-
-  const beatSnippet = cleanBeat.slice(0, 120).trim();
-
-  const userActionClean = (latestUserAction || '')
-    .replace(/["*]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .slice(0, 80)
-    .trim();
-
-  const charName = character?.name || 'character';
 
   if (panelIndex === 1) {
-    const userPart = userActionClean ? `reacting to user action "${userActionClean}", ` : '';
-    return `(1girl and 1boy together, interactive medium shot:1.3), upper body, faces in frame, ${userPart}${charName} acknowledging user, ${beatSnippet || 'interacting closely'}, expressive eyes, webtoon manhwa style`;
+    return `(1girl and 1boy together:1.3), upper body medium shot, ${posePart}${dressPart}, ${exprPart}, ${charName} reacting to user, action: ${cleanSnippet || 'interacting'}, dynamic angle, manhwa webtoon art`;
   } else if (panelIndex === 2) {
-    return `(1girl and 1boy, close-up two shot:1.3), upper body, faces in frame, ${charName}'s emotional reaction, ${beatSnippet || 'gazing with deep feeling'}, eye contact, romantic tension, expressive lighting`;
+    return `(1girl and 1boy close-up two shot:1.3), upper body, ${posePart}${dressPart}, ${charName}'s intense reaction, ${exprPart}, romantic tension, cinematic lighting`;
   } else {
-    return `(1girl and 1boy, intimate two shot:1.3), upper body, faces in frame, dramatic climax moment, ${beatSnippet || 'leaning in close together'}, emotional proximity, cinematic webtoon romance`;
+    return `(1girl and 1boy intimate two shot:1.3), upper body, ${posePart}${dressPart}, ${exprPart}, romantic climax, dramatic cinematic lighting`;
   }
 };
 
